@@ -5,18 +5,25 @@ class wapl:
     def __init__(self,filename):
         self.wav_obj = wave.open(filename)
         #you are a wrapper class, you don't get anything else
+    
     def getnchannels(self):
         return self.wav_obj.getnchannels()
+    
     def getsampwidth(self):
         return self.wav_obj.getsampwidth()
+    
     def getframerate(self):
         return self.wav_obj.getframerate()
+    
     def getnframes(self):
         return self.wav_obj.getnframes()
+    
     def get_audio_length(self):
-        return self.wav_obj.getnframes()/self.wav_obj.framerate()
+        return self.wav_obj.getnframes()/self.wav_obj.getframerate()
+    
     def __convert_time_to_frames(self,T):
         return int(T*self.wav_obj.getframerate())
+    
     def read_audio_segment(self,start_time,end_time):
         assert start_time >= 0
         assert start_time < end_time
