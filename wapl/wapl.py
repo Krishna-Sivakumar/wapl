@@ -33,13 +33,21 @@ class wapl:
         self.wav_obj.setpos(start_frame)
         H = self.wav_obj.readframes(end_frame-start_frame)
         H = np.array([H[i] for i in range(len(H))])
-        channels = [0]*self.wav_obj.getnchannels()
-        skip = self.wav_obj.getsampwidth()*self.wav_obj.getnchannels()
-        plimit = 2**(8*self.wav_obj.getsampwidth()-1)
-        comp = 2*plimit
-        for ch in range(self.wav_obj.getnchannels()):
-            channels[ch] = sum([256**k*H[(k+self.wav_obj.getsampwidth()*ch)::skip] for k in range(self.wav_obj.getsampwidth())])
-            channels[ch] = (channels[ch] >= plimit)*(channels[ch]-comp) + (channels[ch] < plimit)*channels[ch]
+
+        channel_count = self.wav_obj.getnchannels()
+        bit_depth = self.wav_obj.getsampwidth()
+
+        channels = [0] * channel_count
+        skip = bit_depth * channel_count
+        plimit = 2 ** (8*bit_depth - 1)
+        comp = 2 * plimit
+
+        for channel in range(channel_count):
+            channels[channel] = sum(
+                [256**k * H[(k+bit_depth*channel)::skip] for k in range(bit_depth)]
+            )
+            channels[channel] = (channels[channel] >= plimit)*(channels[channel]-comp) + (channels[channel] < plimit)*channels[channel]
+
         return channels
 
 def reverse_bits_8(num):
