@@ -1,23 +1,29 @@
 import wave
 import numpy as np
 
-class wapl:
-    def __init__(self,filename):
-        self.wav_obj = wave.open(filename)
-        #you are a wrapper class, you don't get anything else
+class wave_file_object:
+    def __init__(self):
+        self.location = None
     def getnchannels(self):
+        assert self.location == "disk"
         return self.wav_obj.getnchannels()
     def getsampwidth(self):
+        assert self.location == "disk"
         return self.wav_obj.getsampwidth()
     def getframerate(self):
+        assert self.location == "disk"
         return self.wav_obj.getframerate()
     def getnframes(self):
+        assert self.location == "disk"
         return self.wav_obj.getnframes()
     def get_audio_length(self):
-        return self.wav_obj.getnframes()/self.wav_obj.framerate()
+        assert self.location == "disk"
+        return self.wav_obj.getnframes()/self.wav_obj.getframerate()
     def __convert_time_to_frames(self,T):
+        assert self.location == "disk"
         return int(T*self.wav_obj.getframerate())
     def read_audio_segment(self,start_time,end_time):
+        assert self.location == "disk"
         assert start_time >= 0
         assert start_time < end_time
         start_frame = self.__convert_time_to_frames(start_time)
@@ -35,14 +41,35 @@ class wapl:
             channels[ch] = (channels[ch] >= plimit)*(channels[ch]-comp) + (channels[ch] < plimit)*channels[ch]
         return channels
 
-def reverse_bits_8(num):
-    remainder = num
-    ret = 0
-    for i in range(7,-1,-1):
-        digit = remainder // 2**i
-        remainder = remainder % 2**i
-        ret += 2**(7-i)*digit
-    return int(ret)
+def read(filename):
+    ret = wave_file_object()
+    ret.wav_obj = wave.open(filename)
+    ret.location = "disk"
+    return ret
+
+#boiler plate
+def new_audio_file(num_channels):
+    ret = wave_file_object()
+    ret.location = "RAM"
+    ret.channels = [0]*num_channels
+    return ret
+
+class waveform:
+    def __init__(self,protocol,**kwargs):
+        if(protocol == "sine"):
+            self.protocol = "sine"
+            self.help_text = """
+            one cycle of a sine wave with amplitude 1.
+            """
+    def generate_wave(self,framerate,frequency,amplitude,length=None,initial_phase = 0):
+        fT = 0
+        if(length is not None):
+            fT = frequency*np.arange(framerate*length)/framerate + initial_phase
+        else:
+            print("not yet implementned")
+            return
+        if(self.protocol == "sine"):
+            return amplitude*np.sin(2*np.pi*fT)
 
 def quick_write(filename,channel):
     file = wave.open(filename,'wb')
@@ -81,3 +108,7 @@ if(__name__ == "__main__"):
         #plt.plot(data)
         quick_write("sampleaudio/sine220.wav",data)
         plt.show()
+    if(sys.argv[1] == "waveform"):
+        wf = waveform("sine")
+        generated_wave = wf.generate_wave(44100,440,2**15,1)
+        quick_write("sampleaudio/sine440.wav",generated_wave)
