@@ -7,21 +7,27 @@ class wave_file_object:
     def getnchannels(self):
         assert self.location == "disk"
         return self.wav_obj.getnchannels()
+    
     def getsampwidth(self):
         assert self.location == "disk"
         return self.wav_obj.getsampwidth()
+    
     def getframerate(self):
         assert self.location == "disk"
         return self.wav_obj.getframerate()
+    
     def getnframes(self):
         assert self.location == "disk"
         return self.wav_obj.getnframes()
+    
     def get_audio_length(self):
         assert self.location == "disk"
         return self.wav_obj.getnframes()/self.wav_obj.getframerate()
+  
     def __convert_time_to_frames(self,T):
         assert self.location == "disk"
         return int(T*self.wav_obj.getframerate())
+    
     def read_audio_segment(self,start_time,end_time):
         assert self.location == "disk"
         assert start_time >= 0
