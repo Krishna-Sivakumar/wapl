@@ -7,27 +7,27 @@ class wave_file_object:
     def getnchannels(self):
         assert self.location == "disk"
         return self.wav_obj.getnchannels()
-    
+
     def getsampwidth(self):
         assert self.location == "disk"
         return self.wav_obj.getsampwidth()
-    
+
     def getframerate(self):
         assert self.location == "disk"
         return self.wav_obj.getframerate()
-    
+
     def getnframes(self):
         assert self.location == "disk"
         return self.wav_obj.getnframes()
-    
+
     def get_audio_length(self):
         assert self.location == "disk"
         return self.wav_obj.getnframes()/self.wav_obj.getframerate()
-  
+
     def __convert_time_to_frames(self,T):
         assert self.location == "disk"
         return int(T*self.wav_obj.getframerate())
-    
+
     def read_audio_segment(self,start_time,end_time):
         assert self.location == "disk"
         assert start_time >= 0
@@ -80,8 +80,14 @@ class waveform:
         if(length is not None):
             fT = frequency*np.arange(framerate*length)/framerate + initial_phase
         else:
-            print("not yet implementned")
-            return
+            if(np.shape(frequency) == ()):
+                length = len(amplitude)
+                fT = frequency*np.arange(framerate*length)/framerate + initial_phase
+            else:
+                fT = np.zeros(len(frequency)+1)
+                np.cumsum(frequency,out=fT[1:])
+                fT /= framerate
+                fT = fT[:-1]
         if(self.protocol == "sine"):
             return amplitude*np.sin(2*np.pi*fT)
 
@@ -126,3 +132,7 @@ if(__name__ == "__main__"):
         wf = waveform("sine")
         generated_wave = wf.generate_wave(44100,440,2**15,1)
         quick_write("sampleaudio/sine440.wav",generated_wave)
+        frequency_modulation = wf.generate_wave(44100,1,20,5)+440
+        amp_modulation = np.linspace(2**14,2**15,len(frequency_modulation))
+        modulated_wave = wf.generate_wave(44100,frequency_modulation,amp_modulation)
+        quick_write("sampleaudio/mod.wav",modulated_wave)
