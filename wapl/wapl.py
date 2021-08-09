@@ -94,12 +94,13 @@ class wave_file_object:
             Hs = []
             posmax = 2**(self.sampwidth*8 - 1)
             comp = 2**(self.sampwidth*8)
+            zero = 0
             for channel in self.channels:
                 clipped_channel = channel.clip(-posmax,posmax-1)
                 H = clipped_channel >= 0
                 H = clipped_channel*H + (comp+clipped_channel)*np.logical_not(H)
                 H = [int(c) for c in H]
-                H = [h.to_bytes(self.sampwidth,"little") for h in H]
+                H = [h.to_bytes(self.sampwidth,"little") if h < comp else zero.to_bytes(self.sampwidth, "little") for h in H ]
                 Hs.append(H)
             H = bytearray(self.getnframes()*self.getnchannels()*self.getsampwidth())
             pointer = 0
@@ -135,18 +136,20 @@ class waveform:
             self.help_text = """
             one cycle of a sine wave with amplitude 1.
             """
-    def generate_wave(self,framerate,frequency,amplitude,length=None,initial_phase = 0):
+    def generate_wave(self,framerate,frequency,amplitude,length=None,phase = 0,arrival_delay = 0):
         fT = 0
         if(length is not None):
-            fT = frequency*np.arange(framerate*length)/framerate + initial_phase
+            fT = frequency*np.arange(framerate*length)/framerate
         else:
             if(np.shape(frequency) == ()):
-                fT = frequency*np.arange(len(amplitude))/framerate + initial_phase
+                fT = frequency*np.arange(len(amplitude))/framerate
             else:
                 fT = np.zeros(len(frequency)+1)
                 np.cumsum(frequency,out=fT[1:])
                 fT /= framerate
                 fT = fT[:-1]
+        fT += phase
+        fT += arrival_delay*frequency
         if(self.protocol == "sine"):
             return amplitude*np.sin(2*np.pi*fT)
 
