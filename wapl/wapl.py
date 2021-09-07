@@ -83,6 +83,42 @@ class wave_file_object:
             raise AttributeError("the file must be loaded to ram using .load_to_RAM() before modifications can be made")
         self.sampwidth = sampwidth
 
+    def update_waveform(self,waveform_operand,time_offset=None,operation="add"):
+        """
+        updates the existing waveform by performing the operation with the
+        waveform_operand. time_offset specifies what time in seconds we need to
+        start the modifications at (leave it None for no offset).
+        """
+        if(self.location != "RAM"):
+            raise AttributeError("the file must be loaded to ram using .load_to_RAM() before modifications can be made")
+        if(time_offset is not None):
+            startframe = self.__convert_time_to_frames(time_offset)
+        else:
+            startframe = 0
+        if(operation=='add'):
+            assert len(self.channels) == len(waveform_operand)
+            endframe = startframe+len(waveform_operand[0])
+
+            if(endframe > len(self.channels[0])):
+                new_channels = []
+                for i,c in enumerate(self.channels):
+                    d = np.array(c)
+                    d.resize(endframe)
+                    new_channels.append(d)
+                self.channels = new_channels
+            for i,c in enumerate(self.channels):
+                c[startframe:endframe] += waveform_operand[i]
+        if(operation=="subtract"):
+            assert len(self.channels == len(waveform_operand))
+            endframe = startframe+len(waveform_operand[0])
+            if(endframe > len(self.channels[0])):
+                for i,c in enumerate(self.channels):
+                    d = np.array(s)
+                    d.resize(endframe)
+                    self.channels[i] = d
+            for i,c in enumerate(self.channels):
+                c[startframe:endframe] -= waveform_operand[i]
+
     def write_to_file(self,filename,start_time = None, end_time = None):
         assert self.location == "RAM"
         if(start_time is None and end_time is None):
@@ -124,7 +160,7 @@ def read(filename):
 def new_audio_file(num_channels=2,framerate=44100,sampwidth=2):
     ret = wave_file_object()
     ret.location = "RAM"
-    ret.channels = [0]*num_channels
+    ret.channels = np.zeros((num_channels,1))
     ret.framerate = framerate
     ret.setsampwidth(2)
     return ret
@@ -174,6 +210,7 @@ if(__name__ == "__main__"):
         print("python3 wapl.py quick_write")
         print("python3 wapl.py waveform")
         print("python3 wapl.py write")
+        print("python3 wapl.py update")
         exit(0)
     if(sys.argv[1] == "read"):
         from matplotlib import pyplot as plt
@@ -226,3 +263,12 @@ if(__name__ == "__main__"):
         binaural.channels = [channel1,channel2]
         binaural.write_to_file("sampleaudio/binaural.wav")
         print(time.time()-starttime)
+    if(sys.argv[1] == "update"):
+        wf = waveform("sine")
+        naf = new_audio_file(2,44100,2)
+        waveform_operand = [wf.generate_wave(44100,440,2**13,5)]*2
+        naf.update_waveform(waveform_operand,operation="add")
+        waveform_operand = [wf.generate_wave(44100,220,2**13,2)]*2
+        naf.update_waveform(waveform_operand,operation="add")
+        naf.update_waveform(waveform_operand,time_offset=6,operation="add")
+        naf.write_to_file("sampleaudio/update.wav")
