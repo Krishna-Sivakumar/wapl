@@ -172,7 +172,25 @@ class waveform:
             self.help_text = """
             one cycle of a sine wave with amplitude 1.
             """
+        if(protocol == "power"):
+            self.protocol = "power"
+            self.exponent = kwargs["exponent"]
+            self.help_text = """
+            1-(4*x)**exponent for x < 0.25
+            ((1-4*x)**exponent - 1 for x >= 0.25 and x < 0.5
+            (4*x-2)**exponent - 1 for x >= 0.5 and x < 0.75
+            1-(4*x-2)**exponent for x >= 0.75
+            """
+        if(protocol == "compound"):
+            self.protocol = "compound"
+            self.component_waveforms = kwargs["component_waveforms"]
+
     def generate_wave(self,framerate,frequency,amplitude,length=None,phase = 0,arrival_delay = 0):
+        if(self.protocol == "compound"):
+            ret = 0
+            for component in self.component_waveforms:
+                ret += component['waveform'].generate_wave(framerate,frequency*component['frequency'],amplitude*component['amplitude'],length,phase+component['phase'],arrival_delay)
+            return ret
         fT = 0
         if(length is not None):
             fT = frequency*np.arange(framerate*length)/framerate
@@ -188,6 +206,13 @@ class waveform:
         fT += arrival_delay*frequency
         if(self.protocol == "sine"):
             return amplitude*np.sin(2*np.pi*fT)
+        if(self.protocol == "power"):
+            fT_1 = fT%1
+            phasemultiplier = (fT_1 < 0.25)*(1-(4*fT_1)**self.exponent)
+            phasemultiplier += np.logical_and(fT_1 >= 0.25, fT_1 < 0.5)*((2-4*fT_1)**self.exponent - 1)
+            phasemultiplier += np.logical_and(fT_1 >=0.5, fT_1 < 0.75)*((4*fT_1-2)**self.exponent - 1)
+            phasemultiplier += (fT_1 >= 0.75)*(1-(4-4*fT_1)**self.exponent)
+            return amplitude*phasemultiplier
 
 def quick_write(filename,channel):
     file = wave.open(filename,'wb')
@@ -272,3 +297,25 @@ if(__name__ == "__main__"):
         naf.update_waveform(waveform_operand,operation="add")
         naf.update_waveform(waveform_operand,time_offset=6,operation="add")
         naf.write_to_file("sampleaudio/update.wav")
+    if(sys.argv[1] == "alternate-waveforms"):
+        from matplotlib import pyplot as plt
+        for i in range(1,7):
+            wf = waveform("power",exponent=i)
+            gw = wf.generate_wave(44100,440,2**15,5)
+            naf = new_audio_file(2,44100,2)
+            naf.update_waveform([gw,gw],operation="add")
+            naf.write_to_file(f"sampleaudio/power_{i}.wav")
+    if(sys.argv[1] == "compound-waveform"):
+        from matplotlib import pyplot as plt
+        wf0 = waveform("sine")
+        wf_c = waveform("compound",component_waveforms=[
+        {"waveform":wf0,"frequency":1,"amplitude":0.5,"phase":0},
+        {"waveform":wf0,"frequency":2,"amplitude":0.1,"phase":0.5},
+        {"waveform":wf0,"frequency":4,"amplitude":0.01,"phase":0},
+        {"waveform":wf0,"frequency":8,"amplitude":0.001,"phase":0},
+        {"waveform":wf0,"frequency":16,"amplitude":0.0001,"phase":0},
+        ])
+        gw = wf_c.generate_wave(44100,440,2**15,5)
+        naf = new_audio_file(2,44100,2)
+        naf.update_waveform([gw,gw],operation="add")
+        naf.write_to_file("sampleaudio/tentative-violin.wav")
